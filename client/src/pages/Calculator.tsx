@@ -11,6 +11,7 @@ import {
   SURVIVAL_INGREDIENTS,
   SURVIVAL_BOOSTERS,
   calculateBoostedDays,
+  calculateCosts,
   ACTIVITY_LABELS,
   getSodiumSalt,
   type UserInput,
@@ -20,6 +21,7 @@ import {
   type NoodleBrand,
   type SurvivalPlanResult,
   type SurvivalBooster,
+  type CostBreakdown,
 } from "@/lib/nutrition";
 
 interface Props {
@@ -52,6 +54,9 @@ export default function Calculator({ dark, onToggleDark }: Props) {
   const [displayedDays, setDisplayedDays] = useState(0);
   const boosterRef = useRef<HTMLDivElement>(null);
 
+  // ===== COST STATE =====
+  const [costs, setCosts] = useState<CostBreakdown | null>(null);
+
   const baseDays = result?.survivalTimeline.criticalDays ?? 60;
   const { total: boostedTotal } = calculateBoostedDays(baseDays, activeBoosters);
 
@@ -82,6 +87,15 @@ export default function Calculator({ dark, onToggleDark }: Props) {
     setDisplayedDays(baseDays);
     setActiveBoosters(new Set());
   }, [baseDays]);
+
+  // Herbereken kosten als merk, resultaat of boosters wijzigen
+  useEffect(() => {
+    if (result) {
+      const brand = NOODLE_BRANDS.find((b) => b.id === brandId) ?? NOODLE_BRANDS[0];
+      setCosts(calculateCosts(result, brand, Array.from(activeBoosters)));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, brandId, activeBoosters]);
 
   function toggleBooster(id: string) {
     setActiveBoosters((prev) => {
@@ -556,24 +570,97 @@ export default function Calculator({ dark, onToggleDark }: Props) {
                     })}
                   </div>
 
-                  {/* Totale extra kosten */}
-                  {activeBoosters.size > 0 && (() => {
-                    const totalCostPerDay = SURVIVAL_BOOSTERS
-                      .filter((b) => activeBoosters.has(b.id))
-                      .reduce((s, b) => s + b.costPerDay, 0);
-                    return (
-                      <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between gap-4">
+                  {/* ===== NOODLE ARMOEDE INDEX ===== */}
+                  {costs && (
+                    <div className="rounded-2xl border-2 border-border bg-card overflow-hidden">
+                      {/* Header met score badge */}
+                      <div className="px-5 pt-5 pb-4 border-b border-border flex items-center justify-between gap-4">
                         <div>
-                          <p className="font-semibold text-sm">Extra kosten met actieve boosters</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">Bovenop de kosten van de noodles zelf</p>
+                          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">Noodle Armoede Index</p>
+                          <p className="text-base font-bold">{costs.armoedeEmoji} {costs.armoedeLabel}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{costs.armoedeDescription}</p>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="font-mono font-bold text-lg text-primary">€{totalCostPerDay.toFixed(2)}/dag</p>
-                          <p className="text-xs text-muted-foreground">€{(totalCostPerDay * 30).toFixed(2)}/maand</p>
+                        <div className="shrink-0 flex flex-col items-center">
+                          <div className="w-14 h-14 rounded-full flex items-center justify-center font-mono font-black text-2xl"
+                            style={{
+                              background: costs.armoedeScore <= 2 ? "hsl(var(--primary) / 0.15)" : costs.armoedeScore <= 4 ? "hsl(var(--primary) / 0.10)" : "hsl(var(--muted))",
+                              color: costs.armoedeScore <= 3 ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+                              border: "2px solid",
+                              borderColor: costs.armoedeScore <= 3 ? "hsl(var(--primary))" : "hsl(var(--border))",
+                            }}>
+                            {costs.armoedeScore}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">/ 7</p>
                         </div>
                       </div>
-                    );
-                  })()}
+
+                      {/* Kosten grid */}
+                      <div className="p-5 space-y-4">
+
+                        {/* Noodle kosten rij */}
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">🍜 Noodles alleen ({selectedBrand.name})</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[{label: "Per dag", val: costs.noodleCostPerDay}, {label: "Per week", val: costs.noodleCostPerWeek}, {label: "Per maand", val: costs.noodleCostPerMonth}].map(({label, val}) => (
+                              <div key={label} className="rounded-xl bg-muted/60 p-3 text-center">
+                                <p className="font-mono font-bold text-base text-primary">€{val.toFixed(2)}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1.5">{Math.round(costs.calPerEuro)} kcal per euro · prijs via {selectedBrand.priceSource}</p>
+                        </div>
+
+                        {/* Minimale overleving */}
+                        <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-3">✅ Minimaal levensvatbaar (noodles + boosters)</p>
+                          <div className="grid grid-cols-3 gap-2 mb-3">
+                            {[{label: "Per dag", val: costs.minViableCostPerDay}, {label: "Per week", val: costs.minViableCostPerWeek}, {label: "Per maand", val: costs.minViableCostPerMonth}].map(({label, val}) => (
+                              <div key={label} className="rounded-xl bg-card p-3 text-center border border-border">
+                                <p className="font-mono font-bold text-base text-primary">€{val.toFixed(2)}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Minimum combo */}
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-medium text-muted-foreground mb-1.5">Inclusief minimale combo:</p>
+                            {costs.minimumCombo.map((item) => (
+                              <div key={item.name} className="flex items-center justify-between text-xs">
+                                <span className="flex items-center gap-1.5">
+                                  <span>{item.emoji}</span>
+                                  <span className="font-medium">{item.name}</span>
+                                  <span className="text-muted-foreground">— {item.fixes}</span>
+                                </span>
+                                <span className="font-mono font-semibold" style={{ color: item.costPerDay === 0 ? "var(--color-success)" : "hsl(var(--foreground))" }}>
+                                  {item.costPerDay === 0 ? "gratis" : `€${item.costPerDay.toFixed(2)}/dag`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-3">≈ {(1 / costs.minViableCostPerDay).toFixed(1)} overlevingsdagen per €1</p>
+                        </div>
+
+                        {/* Met actieve boosters */}
+                        {activeBoosters.size > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">⚡ Met actieve boosters ({activeBoosters.size})</p>
+                            <div className="flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3">
+                              <div>
+                                <p className="text-sm font-semibold">Totaal per dag</p>
+                                <p className="text-xs text-muted-foreground">noodles + €{costs.boosterCostPerDay.toFixed(2)} boosters</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-mono font-bold text-lg text-primary">€{costs.totalWithBoostersPerDay.toFixed(2)}/dag</p>
+                                <p className="text-xs text-muted-foreground">€{costs.totalWithBoostersPerMonth.toFixed(2)}/maand</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+                    </div>
+                  )}
 
                   {/* CTA naar plan tab */}
                   <Button variant="outline" className="w-full" onClick={() => setActiveTab("plan")}>

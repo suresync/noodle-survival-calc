@@ -28,6 +28,8 @@ export interface NoodleBrand {
   fatG: number;
   sodiumMg: number;
   saturatedFatG: number;
+  priceEur: number;   // prijs per pakje in NL supermarkt (2025)
+  priceSource: string;
 }
 
 export interface ExtraIngredient {
@@ -96,6 +98,8 @@ export const NOODLE_BRANDS: NoodleBrand[] = [
     fatG: 14,
     sodiumMg: 1760,
     saturatedFatG: 7,
+    priceEur: 0.65,
+    priceSource: "gem. NL supermarkt",
   },
   {
     id: "indomie",
@@ -107,6 +111,8 @@ export const NOODLE_BRANDS: NoodleBrand[] = [
     fatG: 16,
     sodiumMg: 1600,
     saturatedFatG: 7.5,
+    priceEur: 0.70,  // AH 5-pack €3.49 = €0.698/st
+    priceSource: "Albert Heijn",
   },
   {
     id: "nissin",
@@ -118,28 +124,34 @@ export const NOODLE_BRANDS: NoodleBrand[] = [
     fatG: 11,
     sodiumMg: 1430,
     saturatedFatG: 5.5,
+    priceEur: 0.99,
+    priceSource: "Albert Heijn",
   },
   {
     id: "mama",
-    name: "MAMA Instant Noodles (90g)",
-    weightG: 90,
-    calories: 395,
-    proteinG: 8,
-    carbsG: 57,
-    fatG: 14.5,
-    sodiumMg: 1900,
-    saturatedFatG: 7,
+    name: "MAMA Instant Noodles (60g)",
+    weightG: 60,
+    calories: 280,
+    proteinG: 7,
+    carbsG: 44,
+    fatG: 11,
+    sodiumMg: 1700,
+    saturatedFatG: 5.5,
+    priceEur: 0.54,  // Jumbo €0.54
+    priceSource: "Jumbo",
   },
   {
     id: "knorr",
-    name: "Knorr Snack Noodles (68g)",
-    weightG: 68,
-    calories: 310,
+    name: "Knorr Good Noodles (65g)",
+    weightG: 65,
+    calories: 285,
     proteinG: 7,
     carbsG: 44,
-    fatG: 11.5,
+    fatG: 10,
     sodiumMg: 1250,
-    saturatedFatG: 5,
+    saturatedFatG: 4.5,
+    priceEur: 1.19,  // Dirk €1.19 (2026)
+    priceSource: "Dirk",
   },
   {
     id: "yumyum",
@@ -151,6 +163,8 @@ export const NOODLE_BRANDS: NoodleBrand[] = [
     fatG: 13,
     sodiumMg: 1223,
     saturatedFatG: 6.1,
+    priceEur: 0.61,  // Dirk €0.61, AH €0.65
+    priceSource: "Dirk / Albert Heijn",
   },
 ];
 
@@ -479,6 +493,143 @@ export function calculateNutrition(
     extraIngredients,
     survivalTimeline,
     weeklyPackages: effectivePackages * 7,
+  };
+}
+
+// ============================================================
+// NOODLE ARMOEDE INDEX
+// ============================================================
+
+export interface CostBreakdown {
+  // Basis: alleen noodles
+  noodleCostPerDay: number;
+  noodleCostPerWeek: number;
+  noodleCostPerMonth: number;
+
+  // Met minimale boosters (gratis + goedkoopste die vitamine-tekorten dekt)
+  minViableCostPerDay: number;
+  minViableCostPerWeek: number;
+  minViableCostPerMonth: number;
+
+  // Met actieve boosters (doorgegeven van UI)
+  boosterCostPerDay: number;
+  totalWithBoostersPerDay: number;
+  totalWithBoostersPerMonth: number;
+
+  // Efficiëntie
+  calPerEuro: number;          // calorieën per euro (alleen noodles)
+  daysPerEuro: number;         // overlevingsdagen per euro (met min boosters)
+
+  // Armoede Index score 1-10 (1 = goedkoopst, 10 = duurste)
+  armoedeScore: number;
+  armoedeLabel: string;
+  armoedeEmoji: string;
+  armoedeDescription: string;
+
+  // Minimum combo: goedkoopste boosters die de 3 meest kritieke tekorten dekken
+  minimumCombo: MinimumComboItem[];
+}
+
+export interface MinimumComboItem {
+  emoji: string;
+  name: string;
+  fixes: string;
+  costPerDay: number;
+}
+
+export function calculateCosts(
+  result: NutritionResult,
+  brand: NoodleBrand,
+  activeBoosters: string[]
+): CostBreakdown {
+  const noodleCostPerDay = result.packagesPerDay * brand.priceEur;
+
+  // Minimale viable combo: ½ pakketje (gratis) + fruit (vit C) + multivit
+  // Dit dekt de 3 meest kritieke tekorten voor minimale kosten
+  const minViableExtras = 0.25 + 0.20; // sinaasappel + multivitamine
+  const minViableCostPerDay = noodleCostPerDay + minViableExtras;
+
+  // Actieve boosters kosten
+  const boosterCostPerDay = SURVIVAL_BOOSTERS
+    .filter((b) => activeBoosters.includes(b.id))
+    .reduce((s, b) => s + b.costPerDay, 0);
+  const totalWithBoostersPerDay = noodleCostPerDay + boosterCostPerDay;
+
+  // Calorieën per euro
+  const calPerEuro = result.caloriesFromNoodles / noodleCostPerDay;
+
+  // Overlevingsdagen per euro (met min viable setup)
+  const daysPerEuro = 1 / minViableCostPerDay;
+
+  // Armoede score: gebaseerd op kosten per dag t.o.v. range van alle merken
+  // MAMA €0.54 x packs = laagste, Knorr €1.19 x packs = hoogste
+  // Schaal: <€0.80/dag = score 1-3, €0.80-1.50 = 4-6, >€1.50 = 7-10
+  let armoedeScore: number;
+  let armoedeLabel: string;
+  let armoedeEmoji: string;
+  let armoedeDescription: string;
+
+  if (noodleCostPerDay < 0.60) {
+    armoedeScore = 1;
+    armoedeLabel = "Extreme Overleving";
+    armoedeEmoji = "🏚️";
+    armoedeDescription = "Je doet het echt voor niets. Respect.";
+  } else if (noodleCostPerDay < 0.90) {
+    armoedeScore = 2;
+    armoedeLabel = "Diep in de Noodles";
+    armoedeEmoji = "😤";
+    armoedeDescription = "Budget-student niveau. Je bent er goed in.";
+  } else if (noodleCostPerDay < 1.20) {
+    armoedeScore = 3;
+    armoedeLabel = "Noodle Veteraan";
+    armoedeEmoji = "🍜";
+    armoedeDescription = "Klassiek instant noodle budget. Bewezen overlevingsstrategie.";
+  } else if (noodleCostPerDay < 1.60) {
+    armoedeScore = 4;
+    armoedeLabel = "Bewuste Bezuiniger";
+    armoedeEmoji = "🧮";
+    armoedeDescription = "Je hebt nog speelruimte maar doet het goed.";
+  } else if (noodleCostPerDay < 2.00) {
+    armoedeScore = 5;
+    armoedeLabel = "Middenklasse Overlever";
+    armoedeEmoji = "📊";
+    armoedeDescription = "Zit op het gemiddelde. Kan goedkoper.";
+  } else if (noodleCostPerDay < 2.50) {
+    armoedeScore = 6;
+    armoedeLabel = "Premium Armoede";
+    armoedeEmoji = "🥂";
+    armoedeDescription = "Dure noodles, arme portemonnee. Overweeg MAMA.";
+  } else {
+    armoedeScore = 7;
+    armoedeLabel = "Luxe Rantsoen";
+    armoedeEmoji = "👔";
+    armoedeDescription = "Op dit budget eet je echt geen noodles meer. Serieus.";
+  }
+
+  // Minimale combo voor gezondere overleving
+  const minimumCombo: MinimumComboItem[] = [
+    { emoji: "🧂", name: "½ smaakpakketje", fixes: "natrium halveren", costPerDay: 0 },
+    { emoji: "🍊", name: "1 sinaasappel", fixes: "vitamine C (scheurbuik)", costPerDay: 0.25 },
+    { emoji: "💊", name: "Multivitamine", fixes: "A, B12, D, ijzer, foliumzuur", costPerDay: 0.20 },
+  ];
+
+  return {
+    noodleCostPerDay: Math.round(noodleCostPerDay * 100) / 100,
+    noodleCostPerWeek: Math.round(noodleCostPerDay * 7 * 100) / 100,
+    noodleCostPerMonth: Math.round(noodleCostPerDay * 30 * 100) / 100,
+    minViableCostPerDay: Math.round(minViableCostPerDay * 100) / 100,
+    minViableCostPerWeek: Math.round(minViableCostPerDay * 7 * 100) / 100,
+    minViableCostPerMonth: Math.round(minViableCostPerDay * 30 * 100) / 100,
+    boosterCostPerDay: Math.round(boosterCostPerDay * 100) / 100,
+    totalWithBoostersPerDay: Math.round(totalWithBoostersPerDay * 100) / 100,
+    totalWithBoostersPerMonth: Math.round(totalWithBoostersPerDay * 30 * 100) / 100,
+    calPerEuro: Math.round(calPerEuro),
+    daysPerEuro: Math.round(daysPerEuro * 10) / 10,
+    armoedeScore,
+    armoedeLabel,
+    armoedeEmoji,
+    armoedeDescription,
+    minimumCombo,
   };
 }
 
