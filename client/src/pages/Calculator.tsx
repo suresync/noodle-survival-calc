@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,8 @@ import {
   generateSurvivalPlan,
   NOODLE_BRANDS,
   SURVIVAL_INGREDIENTS,
+  SURVIVAL_BOOSTERS,
+  calculateBoostedDays,
   ACTIVITY_LABELS,
   getSodiumSalt,
   type UserInput,
@@ -17,6 +19,7 @@ import {
   type NutritionResult,
   type NoodleBrand,
   type SurvivalPlanResult,
+  type SurvivalBooster,
 } from "@/lib/nutrition";
 
 interface Props {
@@ -43,6 +46,51 @@ export default function Calculator({ dark, onToggleDark }: Props) {
   const [preferences, setPreferences] = useState<Record<string, boolean>>({});
   const [survivalPlan, setSurvivalPlan] = useState<SurvivalPlanResult | null>(null);
   const [prefsSet, setPrefsSet] = useState(false);
+
+  // ===== BOOSTER STATE =====
+  const [activeBoosters, setActiveBoosters] = useState<Set<string>>(new Set());
+  const [displayedDays, setDisplayedDays] = useState(0);
+  const boosterRef = useRef<HTMLDivElement>(null);
+
+  const baseDays = result?.survivalTimeline.criticalDays ?? 60;
+  const { total: boostedTotal } = calculateBoostedDays(baseDays, activeBoosters);
+
+  // Animate the counter when boostedTotal changes
+  useEffect(() => {
+    const start = displayedDays;
+    const end = boostedTotal;
+    if (start === end) return;
+    const diff = end - start;
+    const steps = Math.min(Math.abs(diff), 30);
+    const stepSize = diff / steps;
+    let current = start;
+    let step = 0;
+    const interval = setInterval(() => {
+      step++;
+      current += stepSize;
+      setDisplayedDays(Math.round(current));
+      if (step >= steps) {
+        setDisplayedDays(end);
+        clearInterval(interval);
+      }
+    }, 20);
+    return () => clearInterval(interval);
+  }, [boostedTotal]);
+
+  // Sync base when result changes
+  useEffect(() => {
+    setDisplayedDays(baseDays);
+    setActiveBoosters(new Set());
+  }, [baseDays]);
+
+  function toggleBooster(id: string) {
+    setActiveBoosters((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const selectedBrand: NoodleBrand =
     NOODLE_BRANDS.find((b) => b.id === brandId) ?? NOODLE_BRANDS[0];
@@ -265,7 +313,8 @@ export default function Calculator({ dark, onToggleDark }: Props) {
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="w-full mb-6">
                 <TabsTrigger value="analyse" className="flex-1">🔬 Analyse</TabsTrigger>
-                <TabsTrigger value="plan" className="flex-1">📦 Overlevingsplan</TabsTrigger>
+                <TabsTrigger value="boosters" className="flex-1">⚡ Boosters</TabsTrigger>
+                <TabsTrigger value="plan" className="flex-1">📦 Plan</TabsTrigger>
               </TabsList>
 
               {/* ===== TAB 1: ANALYSE ===== */}
@@ -365,6 +414,17 @@ export default function Calculator({ dark, onToggleDark }: Props) {
                   </div>
                 </section>
 
+                {/* Booster CTA */}
+                <div className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-sm">Wil je langer overleven?</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">Zie wat simpele aanpassingen doen aan je overlevingsduur — van {baseDays} naar mogelijk {baseDays + 350}+ dagen.</p>
+                  </div>
+                  <Button className="shrink-0" onClick={() => setActiveTab("boosters")}>
+                    ⚡ Boosters
+                  </Button>
+                </div>
+
                 {/* Weekly summary */}
                 <section className="rounded-2xl border border-border bg-card p-5">
                   <h3 className="text-base font-semibold mb-4 flex items-center gap-2">📦 Weekoverzicht (zonder extras)</h3>
@@ -389,7 +449,141 @@ export default function Calculator({ dark, onToggleDark }: Props) {
                 </section>
               </TabsContent>
 
-              {/* ===== TAB 2: OVERLEVINGSPLAN ===== */}
+              {/* ===== TAB 2: BOOSTERS ===== */}
+              <TabsContent value="boosters">
+                <div ref={boosterRef} className="space-y-6">
+
+                  {/* Live teller */}
+                  <div className="rounded-2xl border-2 p-6 text-center relative overflow-hidden"
+                    style={{
+                      borderColor: activeBoosters.size === 0 ? "hsl(var(--border))" : "hsl(var(--primary))",
+                      background: activeBoosters.size === 0 ? "hsl(var(--card))" : "hsl(var(--primary) / 0.06)",
+                    }}>
+                    {/* Subtle glow pulse when active */}
+                    {activeBoosters.size > 0 && (
+                      <div className="absolute inset-0 rounded-2xl" style={{ background: "radial-gradient(ellipse at 50% 0%, hsl(var(--primary) / 0.12) 0%, transparent 70%)" }} />
+                    )}
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Kritieke grens zonder hulp</p>
+                    <div className="flex items-end justify-center gap-3 mb-2">
+                      <span className="font-mono font-bold leading-none" style={{ fontSize: "3.5rem", color: "hsl(var(--primary))" }}>
+                        {displayedDays}
+                      </span>
+                      <span className="text-xl font-semibold text-muted-foreground mb-2">dagen</span>
+                    </div>
+                    {activeBoosters.size > 0 && (
+                      <div className="flex items-center justify-center gap-2 mt-1">
+                        <span className="text-xs font-mono text-muted-foreground line-through">{baseDays}d</span>
+                        <span className="text-sm font-bold" style={{ color: "var(--color-success)" }}>
+                          +{boostedTotal - baseDays} dagen gewonnen
+                        </span>
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">
+                          {activeBoosters.size} booster{activeBoosters.size > 1 ? "s" : ""} aan
+                        </span>
+                      </div>
+                    )}
+                    {activeBoosters.size === 0 && (
+                      <p className="text-sm text-muted-foreground">Zet boosters aan om te zien hoeveel je wint ↓</p>
+                    )}
+                  </div>
+
+                  {/* Booster kaarten */}
+                  <div className="space-y-3">
+                    {SURVIVAL_BOOSTERS.map((booster) => {
+                      const active = activeBoosters.has(booster.id);
+                      return (
+                        <button
+                          key={booster.id}
+                          data-testid={`booster-${booster.id}`}
+                          onClick={() => toggleBooster(booster.id)}
+                          className="w-full text-left rounded-2xl border-2 p-4 transition-all duration-200"
+                          style={{
+                            borderColor: active ? "hsl(var(--primary))" : "hsl(var(--border))",
+                            background: active ? "hsl(var(--primary) / 0.07)" : "hsl(var(--card))",
+                          }}
+                        >
+                          <div className="flex items-start gap-4">
+                            {/* Toggle indicator */}
+                            <div className="mt-0.5 shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
+                              style={{
+                                borderColor: active ? "hsl(var(--primary))" : "hsl(var(--border))",
+                                background: active ? "hsl(var(--primary))" : "transparent",
+                              }}>
+                              {active && (
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <path d="M2 6l3 3 5-5" stroke="hsl(var(--primary-foreground))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl">{booster.emoji}</span>
+                                  <span className="font-semibold text-sm">{booster.title}</span>
+                                </div>
+                                {/* Days badge */}
+                                <span className="shrink-0 font-mono font-bold text-sm px-2.5 py-1 rounded-full transition-all"
+                                  style={{
+                                    background: active ? "hsl(var(--primary))" : "hsl(var(--muted))",
+                                    color: active ? "hsl(var(--primary-foreground))" : "hsl(var(--muted-foreground))",
+                                  }}>
+                                  +{booster.daysAdded}d
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1 leading-snug">{booster.subtitle}</p>
+                              {active && (
+                                <p className="text-sm mt-2 leading-relaxed" style={{ color: "hsl(var(--foreground) / 0.75)" }}>
+                                  {booster.detail}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                  {booster.effort}
+                                </span>
+                                {booster.costPerDay === 0 ? (
+                                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--color-success-bg)", color: "var(--color-success)" }}>gratis</span>
+                                ) : (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">~€{booster.costPerDay.toFixed(2)}/dag</span>
+                                )}
+                                {booster.fixes.slice(0, 2).map((f) => (
+                                  <span key={f} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{f}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Totale extra kosten */}
+                  {activeBoosters.size > 0 && (() => {
+                    const totalCostPerDay = SURVIVAL_BOOSTERS
+                      .filter((b) => activeBoosters.has(b.id))
+                      .reduce((s, b) => s + b.costPerDay, 0);
+                    return (
+                      <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-semibold text-sm">Extra kosten met actieve boosters</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Bovenop de kosten van de noodles zelf</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-mono font-bold text-lg text-primary">€{totalCostPerDay.toFixed(2)}/dag</p>
+                          <p className="text-xs text-muted-foreground">€{(totalCostPerDay * 30).toFixed(2)}/maand</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* CTA naar plan tab */}
+                  <Button variant="outline" className="w-full" onClick={() => setActiveTab("plan")}>
+                    📦 Maak een boodschappenplan voor X dagen →
+                  </Button>
+
+                </div>
+              </TabsContent>
+
+              {/* ===== TAB 3: OVERLEVINGSPLAN ===== */}
               <TabsContent value="plan" className="space-y-6">
 
                 {/* Stap 1: Dagen instellen */}

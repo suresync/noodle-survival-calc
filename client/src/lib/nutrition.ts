@@ -870,3 +870,145 @@ function formatTotalAmount(ing: SurvivalIngredient, days: number): string {
   if (ing.id === "sweet_potato") return `${days * 100}g (~${days} stuks)`;
   return `${days}× ${ing.amountPerDayShort}`;
 }
+
+// ============================================================
+// SURVIVAL BOOSTERS — togglebare verbeteringen met dagimpact
+// ============================================================
+
+export interface SurvivalBooster {
+  id: string;
+  emoji: string;
+  title: string;
+  subtitle: string;         // korte beschrijving (~1 regel)
+  detail: string;           // waarom het helpt
+  daysAdded: number;        // hoeveel dagen het de kritieke grens verlegt
+  category: "voeding" | "gewoonte" | "supplement";
+  effort: "makkelijk" | "gemiddeld" | "lastig";
+  costPerDay: number;       // geschatte kosten in euro per dag (0 = gratis)
+  fixes: string[];          // welke tekorten het adresseert
+}
+
+export const SURVIVAL_BOOSTERS: SurvivalBooster[] = [
+  {
+    id: "half_packet",
+    emoji: "🧂",
+    title: "Gebruik ½ smaakpakketje",
+    subtitle: "Halveer je zoutinname in één beweging",
+    detail: "De helft van je natriuminname zit in het kruidentzakje. Door dat te halveren geef je je nieren veel minder te verwerken. Je went snel aan de lichtere smaak.",
+    daysAdded: 35,
+    category: "gewoonte",
+    effort: "makkelijk",
+    costPerDay: 0,
+    fixes: ["natrium", "bloeddruk", "nierfunctie"],
+  },
+  {
+    id: "daily_fruit",
+    emoji: "🍊",
+    title: "1 stuk fruit per dag",
+    subtitle: "Voorkomt scheurbuik — de klassieke noodle-killer",
+    detail: "Vitamine C-voorraden zijn na ~4 weken op. Één sinaasappel of kiwi per dag dekt 100% van je dagbehoefte en stelt scheurbuik onbepaald uit. Zelfs citroensap in je water telt.",
+    daysAdded: 60,
+    category: "voeding",
+    effort: "makkelijk",
+    costPerDay: 0.25,
+    fixes: ["vitamine C", "scheurbuik", "immuunsysteem"],
+  },
+  {
+    id: "daily_egg",
+    emoji: "🥚",
+    title: "1–2 eieren per dag",
+    subtitle: "Goedkoopste complete eiwitbron beschikbaar",
+    detail: "Eieren leveren alle 9 essentiële aminozuren, B12, vitamine D en selenium. Ze compenseren het grootste deel van het eiwittekort van noodles en zijn wekenlang houdbaar.",
+    daysAdded: 50,
+    category: "voeding",
+    effort: "makkelijk",
+    costPerDay: 0.35,
+    fixes: ["eiwit", "B12", "vitamine D", "spierbehoud"],
+  },
+  {
+    id: "extra_water",
+    emoji: "💧",
+    title: "Minimaal 2.5L water per dag",
+    subtitle: "Helpt nieren het overtollige zout af te voeren",
+    detail: "Bij een hoge zoutinname hebben je nieren extra water nodig om natrium uit te scheiden. Meer drinken dan normaal verlaagt de effectieve zoutbelasting en voorkomt hoofdpijn en nierstress.",
+    daysAdded: 25,
+    category: "gewoonte",
+    effort: "makkelijk",
+    costPerDay: 0,
+    fixes: ["natrium", "nierfunctie", "hoofdpijn"],
+  },
+  {
+    id: "multivitamin",
+    emoji: "💊",
+    title: "Dagelijkse multivitamine",
+    subtitle: "Dekt vrijwel alle micronutriënttekorten in één pil",
+    detail: "Een standaard multivitamine (bijv. Davitamon of Supradyn) compenseert vitamine C, A, B12, D, ijzer en foliumzuur tegelijk. De meest efficiënte survival-aanvulling qua kosten/effect.",
+    daysAdded: 90,
+    category: "supplement",
+    effort: "makkelijk",
+    costPerDay: 0.20,
+    fixes: ["vitamine C", "vitamine A", "B12", "ijzer", "foliumzuur"],
+  },
+  {
+    id: "alternate_days",
+    emoji: "🔄",
+    title: "Om de dag noodles (afwisselen)",
+    subtitle: "Halveert zoutbelasting over de week",
+    detail: "Op de tussenliggende dagen eet je iets anders — rijst, brood, aardappelen. Dit halveert de cumulatieve zoutschade en geeft je nieren herstelruimte. Op dagen zonder noodles kun je ook makkelijker groenten toevoegen.",
+    daysAdded: 45,
+    category: "gewoonte",
+    effort: "gemiddeld",
+    costPerDay: 0.50,
+    fixes: ["natrium", "afwisseling", "nierfunctie"],
+  },
+  {
+    id: "daily_veg",
+    emoji: "🥬",
+    title: "Handvol groenten per dag",
+    subtitle: "Vezels, mineralen én vitamine A in één klap",
+    detail: "Diepvriesgroenten (spinazie, erwten, broccoli) zijn goedkoop, lang houdbaar en leveren vezels, kalium, ijzer en vitamine A. Zelfs 80–100g per dag maakt een groot verschil voor je darmgezondheid.",
+    daysAdded: 40,
+    category: "voeding",
+    effort: "makkelijk",
+    costPerDay: 0.30,
+    fixes: ["vezels", "vitamine A", "kalium", "darmen"],
+  },
+  {
+    id: "beans_or_lentils",
+    emoji: "🫘",
+    title: "Bonen of linzen toevoegen",
+    subtitle: "Plant-based eiwit + vezels + ijzer",
+    detail: "Een blik kidneybonen of linzen (~€0.70) gaat 4 dagen mee. Ze leveren vezels die noodles totaal missen, verlagen de glycemische impact van de maaltijd en voegen ijzer en foliumzuur toe.",
+    daysAdded: 35,
+    category: "voeding",
+    effort: "makkelijk",
+    costPerDay: 0.20,
+    fixes: ["vezels", "eiwit", "ijzer", "foliumzuur"],
+  },
+  {
+    id: "banana_daily",
+    emoji: "🍌",
+    title: "1 banaan per dag",
+    subtitle: "Corrigeert de natrium/kalium-disbalans",
+    detail: "Hoge zoutinname puurt kalium uit je lichaam — wat spierkrampen en hartritme­problemen veroorzaakt. Een banaan per dag (358mg kalium) neutraliseert dit effect en levert ook snelle energie.",
+    daysAdded: 20,
+    category: "voeding",
+    effort: "makkelijk",
+    costPerDay: 0.20,
+    fixes: ["kalium", "spierkrampen", "natrium-balans"],
+  },
+];
+
+// Bereken totaal kritieke dagen met actieve boosters
+export function calculateBoostedDays(
+  baseDays: number,
+  activeBoosters: Set<string>
+): { total: number; breakdown: { booster: SurvivalBooster; active: boolean }[] } {
+  let total = baseDays;
+  const breakdown = SURVIVAL_BOOSTERS.map((b) => {
+    const active = activeBoosters.has(b.id);
+    if (active) total += b.daysAdded;
+    return { booster: b, active };
+  });
+  return { total, breakdown };
+}
