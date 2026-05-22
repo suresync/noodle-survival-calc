@@ -1,0 +1,240 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================
+   NOODLE CALC — Cup Ramen / Instant Aesthetics
+   Warm saffron-orange + dark charcoal
+   ============================================= */
+
+@layer base {
+  :root {
+    /* Background — warm off-white, papier-achtig */
+    --background: 38 25% 96%;
+    --foreground: 30 20% 12%;
+
+    /* Card */
+    --card: 38 20% 98%;
+    --card-foreground: 30 20% 12%;
+
+    /* Popover */
+    --popover: 38 20% 98%;
+    --popover-foreground: 30 20% 12%;
+
+    /* Primary — diep saffraangeel-oranje */
+    --primary: 28 85% 42%;
+    --primary-foreground: 38 25% 96%;
+
+    /* Secondary — zachte taupe */
+    --secondary: 36 15% 88%;
+    --secondary-foreground: 30 20% 20%;
+
+    /* Muted */
+    --muted: 36 12% 91%;
+    --muted-foreground: 30 10% 48%;
+
+    /* Accent — ramen rood */
+    --accent: 10 72% 48%;
+    --accent-foreground: 38 25% 96%;
+
+    /* Destructive */
+    --destructive: 0 80% 45%;
+    --destructive-foreground: 38 25% 96%;
+
+    /* Border & Input */
+    --border: 36 12% 82%;
+    --input: 36 12% 82%;
+    --ring: 28 85% 42%;
+
+    /* Chart colors */
+    --chart-1: 28 85% 42%;
+    --chart-2: 10 72% 48%;
+    --chart-3: 103 56% 31%;
+    --chart-4: 188 35% 47%;
+    --chart-5: 320 47% 60%;
+
+    --radius: 0.625rem;
+
+    /* Custom tokens */
+    --color-danger: #c0392b;
+    --color-danger-bg: #fdf0ef;
+    --color-warning-custom: #d68910;
+    --color-warning-bg: #fef9ec;
+    --color-success: #27ae60;
+    --color-success-bg: #eafaf1;
+    --color-info: #2980b9;
+    --color-info-bg: #eaf4fb;
+  }
+
+  .dark {
+    /* Dark — warm charcoal, noodle-broth-donker */
+    --background: 30 12% 9%;
+    --foreground: 38 15% 82%;
+
+    --card: 30 10% 12%;
+    --card-foreground: 38 15% 82%;
+
+    --popover: 30 10% 12%;
+    --popover-foreground: 38 15% 82%;
+
+    /* Primary — goudgeel in dark */
+    --primary: 38 88% 52%;
+    --primary-foreground: 30 12% 9%;
+
+    --secondary: 30 8% 20%;
+    --secondary-foreground: 38 12% 70%;
+
+    --muted: 30 8% 18%;
+    --muted-foreground: 38 8% 52%;
+
+    --accent: 10 72% 55%;
+    --accent-foreground: 30 12% 9%;
+
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 38 25% 96%;
+
+    --border: 30 8% 22%;
+    --input: 30 8% 22%;
+    --ring: 38 88% 52%;
+
+    --chart-1: 38 88% 52%;
+    --chart-2: 10 72% 55%;
+    --chart-3: 97 43% 47%;
+    --chart-4: 188 35% 47%;
+    --chart-5: 320 47% 60%;
+
+    /* Custom tokens dark */
+    --color-danger: #e74c3c;
+    --color-danger-bg: #2c1a1a;
+    --color-warning-custom: #f39c12;
+    --color-warning-bg: #2a2010;
+    --color-success: #2ecc71;
+    --color-success-bg: #0f2a1a;
+    --color-info: #3498db;
+    --color-info-bg: #0e1e2a;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Satoshi', 'General Sans', system-ui, sans-serif;
+    min-height: 100dvh;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'General Sans', 'Satoshi', system-ui, sans-serif;
+    font-weight: 600;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  .font-mono {
+    font-family: 'DM Mono', 'Courier New', monospace;
+  }
+}
+
+/* ====== CUSTOM COMPONENTS ====== */
+@layer components {
+  .warning-danger {
+    background-color: var(--color-danger-bg);
+    border-left: 3px solid var(--color-danger);
+    color: var(--color-danger);
+  }
+  .warning-warning {
+    background-color: var(--color-warning-bg);
+    border-left: 3px solid var(--color-warning-custom);
+    color: var(--color-warning-custom);
+  }
+  .warning-info {
+    background-color: var(--color-info-bg);
+    border-left: 3px solid var(--color-info);
+    color: var(--color-info);
+  }
+  .deficit-critical {
+    background-color: var(--color-danger-bg);
+    border: 1px solid color-mix(in oklab, var(--color-danger) 30%, transparent);
+  }
+  .deficit-low {
+    background-color: var(--color-warning-bg);
+    border: 1px solid color-mix(in oklab, var(--color-warning-custom) 30%, transparent);
+  }
+  .deficit-moderate {
+    background-color: var(--color-info-bg);
+    border: 1px solid color-mix(in oklab, var(--color-info) 30%, transparent);
+  }
+  .ingredient-critical {
+    border-left: 3px solid var(--color-danger);
+  }
+  .ingredient-high {
+    border-left: 3px solid var(--color-warning-custom);
+  }
+  .ingredient-medium {
+    border-left: 3px solid var(--color-info);
+  }
+}
+
+/* ====== PROGRESS BAR ====== */
+.sodium-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+  overflow: visible;
+  position: relative;
+}
+.sodium-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ====== STAT CARD ====== */
+.stat-card {
+  @apply rounded-xl p-4 flex flex-col gap-1;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+}
+.stat-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.75rem;
+  font-weight: 500;
+  line-height: 1;
+  color: hsl(var(--primary));
+}
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ====== NOODLE ANIMATION ====== */
+@keyframes steam {
+  0% { opacity: 0; transform: translateY(0) scaleX(1); }
+  50% { opacity: 0.6; transform: translateY(-12px) scaleX(1.2); }
+  100% { opacity: 0; transform: translateY(-24px) scaleX(0.8); }
+}
+.steam-1 { animation: steam 2s ease-in-out infinite; }
+.steam-2 { animation: steam 2s ease-in-out infinite 0.4s; }
+.steam-3 { animation: steam 2s ease-in-out infinite 0.8s; }
+
+/* ====== SCROLLBAR ====== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
