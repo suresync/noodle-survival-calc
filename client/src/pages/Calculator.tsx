@@ -461,6 +461,99 @@ export default function Calculator({ dark, onToggleDark }: Props) {
                     <span className="text-muted-foreground">Gebruik het smaakpakketje maar <strong className="text-foreground">half</strong> — dat halveert je zoutinname direct.</span>
                   </div>
                 </section>
+
+                {/* ===== NOODLE ARMOEDE INDEX (Analyse tab) ===== */}
+                {costs && (
+                  <section className="rounded-2xl border-2 border-border bg-card overflow-hidden">
+                    {/* Header */}
+                    <div className="px-5 pt-5 pb-4 border-b border-border flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">💸 Noodle Armoede Index</p>
+                        <p className="text-base font-bold">{costs.armoedeEmoji} {costs.armoedeLabel}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{costs.armoedeDescription}</p>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-center">
+                        <div className="w-14 h-14 rounded-full flex items-center justify-center font-mono font-black text-2xl"
+                          style={{
+                            background: costs.armoedeScore <= 2 ? "hsl(var(--primary) / 0.15)" : costs.armoedeScore <= 4 ? "hsl(var(--primary) / 0.10)" : "hsl(var(--muted))",
+                            color: costs.armoedeScore <= 3 ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+                            border: "2px solid",
+                            borderColor: costs.armoedeScore <= 3 ? "hsl(var(--primary))" : "hsl(var(--border))",
+                          }}>
+                          {costs.armoedeScore}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">/ 7</p>
+                      </div>
+                    </div>
+
+                    <div className="p-5 space-y-4">
+                      {/* Noodles alleen */}
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">🍜 Overlevingskosten — {selectedBrand.name}</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { label: "Per dag", val: costs.noodleCostPerDay },
+                            { label: "Per week", val: costs.noodleCostPerWeek },
+                            { label: "Per maand", val: costs.noodleCostPerMonth },
+                          ].map(({ label, val }) => (
+                            <div key={label} className="rounded-xl bg-muted/60 p-3 text-center">
+                              <p className="font-mono font-bold text-base text-primary">€{val.toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1.5">{Math.round(costs.calPerEuro)} kcal per euro · bron: {selectedBrand.priceSource}</p>
+                      </div>
+
+                      {/* Minimale levensvatbare combo */}
+                      <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-3">✅ Minimale overlevingskosten (met essentiële boosters)</p>
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {[
+                            { label: "Per dag", val: costs.minViableCostPerDay },
+                            { label: "Per week", val: costs.minViableCostPerWeek },
+                            { label: "Per maand", val: costs.minViableCostPerMonth },
+                          ].map(({ label, val }) => (
+                            <div key={label} className="rounded-xl bg-card p-3 text-center border border-border">
+                              <p className="font-mono font-bold text-base text-primary">€{val.toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="space-y-1.5">
+                          {costs.minimumCombo.map((item) => (
+                            <div key={item.name} className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1.5">
+                                <span>{item.emoji}</span>
+                                <span className="font-medium">{item.name}</span>
+                                <span className="text-muted-foreground">— {item.fixes}</span>
+                              </span>
+                              <span className="font-mono font-semibold" style={{ color: item.costPerDay === 0 ? "var(--color-success)" : "hsl(var(--foreground))" }}>
+                                {item.costPerDay === 0 ? "gratis" : `€${item.costPerDay.toFixed(2)}/dag`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-3">≈ {(1 / costs.minViableCostPerDay).toFixed(1)} overlevingsdagen per €1</p>
+                      </div>
+
+                      {/* Booster kosten als actief */}
+                      {activeBoosters.size > 0 && (
+                        <div className="flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3">
+                          <div>
+                            <p className="text-sm font-semibold">⚡ Met {activeBoosters.size} actieve booster{activeBoosters.size > 1 ? "s" : ""}</p>
+                            <p className="text-xs text-muted-foreground">noodles + €{costs.boosterCostPerDay.toFixed(2)}/dag extra</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-mono font-bold text-lg text-primary">€{costs.totalWithBoostersPerDay.toFixed(2)}/dag</p>
+                            <p className="text-xs text-muted-foreground">€{costs.totalWithBoostersPerMonth.toFixed(2)}/maand</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )}
+
               </TabsContent>
 
               {/* ===== TAB 2: BOOSTERS ===== */}
