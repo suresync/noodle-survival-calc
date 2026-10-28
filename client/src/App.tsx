@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Router, Switch, Route } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
+import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from "@/components/ui/toaster";
 import Calculator from "@/pages/Calculator";
 
@@ -27,6 +28,7 @@ function App() {
         <Route component={() => <Calculator dark={dark} onToggleDark={toggleDark} />} />
       </Switch>
       <Toaster />
+      <Analytics />
     </Router>
   );
 }
